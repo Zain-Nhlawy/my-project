@@ -39,14 +39,14 @@ const float WHEEL_DISTANCE = 8.0;
 
 const float targetDistance = 7;
 
-const float kp = 2.2;
+const float kp = 0.7;
 const float kd = 0.15;
 const float ki = 0.001;
 
 float integral = 0;
 float lastError = 0;
 
-int baseSpeed = 50;
+int baseSpeed = 40;
 const int baseDelay = 5;
 
 void setup() {
