@@ -93,7 +93,7 @@ float error = targetDistance - leftDistance;
   lastError = error;
 
   if (frontDistance < 10) {
-    turnRight(90.0);
+    turnRightShort();
   }
 
   // if (rightDistance > 15) {
