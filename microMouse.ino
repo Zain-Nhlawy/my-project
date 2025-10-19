@@ -39,7 +39,7 @@ const float WHEEL_DISTANCE = 8.0;
 
 const float targetDistance = 7;
 
-const float kp = 0.23;
+const float kp = 2.2;
 const float kd = 0.15;
 const float ki = 0.001;
 
