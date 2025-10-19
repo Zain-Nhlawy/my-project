@@ -37,16 +37,16 @@ const long PULSES_PER_TURN = 420;
 const float WHEEL_DIAMETER = 4.0;
 const float WHEEL_DISTANCE = 8.0;
 
-const float targetDistance = 7;
+const float targetDistance = 8;
 
-const float kp = 0.7;
+const float kp = 0.23;
 const float kd = 0.15;
-const float ki = 0.001;
+const float ki = 0;
 
 float integral = 0;
 float lastError = 0;
 
-int baseSpeed = 40;
+int baseSpeed = 42;
 const int baseDelay = 5;
 
 void setup() {
@@ -81,7 +81,7 @@ float error = targetDistance - leftDistance;
   float control = kp * error + kd * derivative + integral;
 
 
-  int speedA = baseSpeed*1.435 + control;
+  int speedA = baseSpeed*1.5 + control;
   int speedB = baseSpeed - control;
 
   speedA = constrain(speedA, 0, 255);
@@ -92,7 +92,7 @@ float error = targetDistance - leftDistance;
 
   lastError = error;
 
-  if (frontDistance < 10) {
+  if (frontDistance < 6) {
     turnRightShort();
   }
 
@@ -105,6 +105,11 @@ float error = targetDistance - leftDistance;
   Serial.print("  B: ");  Serial.println(count2);
 
   delay(baseDelay);
+}
+
+void movelitte(){
+  Forward();
+  delay(200);
 }
 
 void Forward() {
@@ -128,10 +133,10 @@ void turnRightShort() {
   digitalWrite(IN2, HIGH);
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, LOW);
-  analogWrite(ENA, 150);
-  analogWrite(ENB, 150);
-  delay(400);
-  Wait(0.3);
+  analogWrite(ENA, 70);
+  analogWrite(ENB, 70);
+  delay(350);
+  Wait(0.5);
   Forward();
 }
 
@@ -177,6 +182,7 @@ void turnLeft(float degree) {
   float wheelCircumference = pi * WHEEL_DIAMETER;
   float turnDistance = 2.0 * pi * (WHEEL_DISTANCE / 2.0) * (degree / 360.0);
   long targetPulses = (long)((PULSES_PER_TURN * turnDistance) / wheelCircumference + 0.5);
+
 
   encoder1.write(0);
   encoder2.write(0);
