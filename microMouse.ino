@@ -46,7 +46,7 @@ const float ki = 0.001;
 float integral = 0;
 float lastError = 0;
 
-int baseSpeed = 45;
+int baseSpeed = 50;
 const int baseDelay = 5;
 
 void setup() {
