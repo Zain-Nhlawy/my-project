@@ -1,22 +1,22 @@
 #include <NewPing.h>
 #include <Encoder.h>
 
-#define TRIG_LEFT   A5
-#define ECHO_LEFT   A4
+#define TRIG_LEFT A5
+#define ECHO_LEFT A4
 
-#define TRIG_FRONT  A3
-#define ECHO_FRONT  A2
+#define TRIG_FRONT A3
+#define ECHO_FRONT A2
 
-#define TRIG_RIGHT  A0
-#define ECHO_RIGHT  A1
+#define TRIG_RIGHT A0
+#define ECHO_RIGHT A1
 
-#define MAX_DISTANCE 50
+#define MAX_DISTANCE 30
 
 NewPing sonarLeft(TRIG_LEFT, ECHO_LEFT, MAX_DISTANCE);
 NewPing sonarFront(TRIG_FRONT, ECHO_FRONT, MAX_DISTANCE);
 NewPing sonarRight(TRIG_RIGHT, ECHO_RIGHT, MAX_DISTANCE);
 
-#define ENC1_A 13  
+#define ENC1_A 13
 #define ENC1_B 2
 #define ENC2_A 3
 #define ENC2_B 4
@@ -28,25 +28,27 @@ Encoder encoder2(ENC2_A, ENC2_B);
 #define IN1 6
 #define IN2 7
 
-#define ENB 10  
+#define ENB 10
 #define IN3 8
 #define IN4 9
+#define LeftTrack 11
+#define RightTrack 12
 
 
-const long PULSES_PER_TURN = 420;    
+const long PULSES_PER_TURN = 420;
 const float WHEEL_DIAMETER = 4.0;
 const float WHEEL_DISTANCE = 8.0;
 
-const float targetDistance = 8;
+const float targetDistance = 20;
 
 const float kp = 0.23;
 const float kd = 0.15;
-const float ki = 0;
+const float ki = 0.001;
 
 float integral = 0;
 float lastError = 0;
 
-int baseSpeed = 42;
+int baseSpeed = 48;
 const int baseDelay = 5;
 
 void setup() {
@@ -59,12 +61,18 @@ void setup() {
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
 
+
+  pinMode(LeftTrack, INPUT);
+  pinMode(RightTrack, INPUT);
+
   Forward();
 }
 
 void loop() {
   long count1 = encoder1.read();
   long count2 = encoder2.read();
+
+  int LeftWallTrack = digitalRead(LeftTrack);
 
   float leftDistance = sonarLeft.ping_cm();
   float frontDistance = sonarFront.ping_cm();
@@ -75,13 +83,13 @@ void loop() {
   if (rightDistance == 0) rightDistance = MAX_DISTANCE;
 
   // float error = targetDistance - leftDistance;
-float error = targetDistance - leftDistance;
+  float error = targetDistance - leftDistance;
   integral = 0.7 * integral + ki * error;
   float derivative = error - lastError;
   float control = kp * error + kd * derivative + integral;
 
 
-  int speedA = baseSpeed*1.5 + control;
+  int speedA = baseSpeed*1.6  + control;
   int speedB = baseSpeed - control;
 
   speedA = constrain(speedA, 0, 255);
@@ -92,24 +100,34 @@ float error = targetDistance - leftDistance;
 
   lastError = error;
 
-  if (frontDistance < 6) {
+  int LeftSensorState = digitalRead(LeftTrack);
+  int RightSensorState = digitalRead(RightTrack);
+
+  if (RightSensorState == HIGH) {
     turnRightShort();
   }
 
-  // if (rightDistance > 15) {
-  //   turnLeft(90.0);
-  // }
+  if (frontDistance < 6){
+    turnLeftShort();
+  }
 
-  Serial.print("Left: "); Serial.print(leftDistance);
-  Serial.print("  A: ");  Serial.print(count1);
-  Serial.print("  B: ");  Serial.println(count2);
+  Serial.print("Left: ");
+  Serial.println(LeftSensorState);
+  // Serial.print("  A: ");  Serial.print(count1);
+  // Serial.print("  B: ");  Serial.println(count2);
 
   delay(baseDelay);
 }
 
-void movelitte(){
-  Forward();
-  delay(200);
+void movelitte() {
+  Wait(0.5);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENA, 50*1.6);
+  analogWrite(ENB, 50);
+  delay(600);
 }
 
 void Forward() {
@@ -135,9 +153,21 @@ void turnRightShort() {
   digitalWrite(IN4, LOW);
   analogWrite(ENA, 70);
   analogWrite(ENB, 70);
-  delay(350);
+  delay(330);
   Wait(0.5);
-  Forward();
+  movelitte();
+}
+void turnLeftShort() {
+  Wait(0.5);
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENA, 70);
+  analogWrite(ENB, 70);
+  delay(330);
+  Wait(0.5);
+  
 }
 
 void turnRight(float degree) {
@@ -158,6 +188,7 @@ void turnRight(float degree) {
     digitalWrite(IN2, LOW);
     digitalWrite(IN3, LOW);
     digitalWrite(IN4, HIGH);
+
 
     long error2 = encoder1.read() - encoder2.read();
     int speedA = baseSpeed + kp * error2;
