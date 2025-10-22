@@ -10,13 +10,13 @@
 #define TRIG_RIGHT A0
 #define ECHO_RIGHT A1
 
-#define MAX_DISTANCE 30
+#define MAX_DISTANCE 50
 
 NewPing sonarLeft(TRIG_LEFT, ECHO_LEFT, MAX_DISTANCE);
 NewPing sonarFront(TRIG_FRONT, ECHO_FRONT, MAX_DISTANCE);
 NewPing sonarRight(TRIG_RIGHT, ECHO_RIGHT, MAX_DISTANCE);
 
-#define ENC1_A 13
+#define ENC1_A 12
 #define ENC1_B 2
 #define ENC2_A 3
 #define ENC2_B 4
@@ -32,23 +32,24 @@ Encoder encoder2(ENC2_A, ENC2_B);
 #define IN3 8
 #define IN4 9
 #define LeftTrack 11
-#define RightTrack 12
+#define RightTrack A6
 
 
-const long PULSES_PER_TURN = 420;
-const float WHEEL_DIAMETER = 4.0;
-const float WHEEL_DISTANCE = 8.0;
+const long PULSES_PER_TURN = 778;
+const float WHEEL_DIAMETER = 4.02;
+const float WHEEL_DISTANCE = 8.04;
 
-const float targetDistance = 20;
+const float targetDistance = 4.2;
 
-const float kp = 0.23;
-const float kd = 0.15;
-const float ki = 0.001;
+const float kp = 0.24;
+const float kd = 0.2;
+const float ki = 0;
 
 float integral = 0;
 float lastError = 0;
 
-int baseSpeed = 48;
+int baseSpeedA = 50;
+int baseSpeedB = 40;
 const int baseDelay = 5;
 
 void setup() {
@@ -72,49 +73,52 @@ void loop() {
   long count1 = encoder1.read();
   long count2 = encoder2.read();
 
-  int LeftWallTrack = digitalRead(LeftTrack);
-
-  float leftDistance = sonarLeft.ping_cm();
   float frontDistance = sonarFront.ping_cm();
-  float rightDistance = sonarRight.ping_cm();
 
-  if (leftDistance == 0) leftDistance = MAX_DISTANCE;
   if (frontDistance == 0) frontDistance = MAX_DISTANCE;
-  if (rightDistance == 0) rightDistance = MAX_DISTANCE;
-
-  // float error = targetDistance - leftDistance;
-  float error = targetDistance - leftDistance;
-  integral = 0.7 * integral + ki * error;
-  float derivative = error - lastError;
-  float control = kp * error + kd * derivative + integral;
-
-
-  int speedA = baseSpeed*1.6  + control;
-  int speedB = baseSpeed - control;
-
-  speedA = constrain(speedA, 0, 255);
-  speedB = constrain(speedB, 0, 255);
-
-  analogWrite(ENA, speedA);
-  analogWrite(ENB, speedB);
-
-  lastError = error;
 
   int LeftSensorState = digitalRead(LeftTrack);
-  int RightSensorState = digitalRead(RightTrack);
+  int RightSensorState = analogRead(RightTrack);
 
-  if (RightSensorState == HIGH) {
-    turnRightShort();
+
+
+
+  if (LeftSensorState) {
+    turnLeft(90.0);
+
+  } else if (frontDistance >= 7) {
+    leftPID();
+  } else if (RightSensorState > 500) {
+    turnRight(90.0);
+  } else {
+    turnLeft(180.0);
   }
 
-  if (frontDistance < 6){
-    turnLeftShort();
-  }
 
-  Serial.print("Left: ");
-  Serial.println(LeftSensorState);
+
+  // if (RightSensorState == HIGH) {
+  //   turnRightShort();
+  // } else if (LeftSensorState == LOW) {
+  //   if (frontDistance < 6) {
+  //     turnLeftShort();
+  //   } else
+  //     leftPID();
+  // } else if (RightSensorState == LOW) {
+  //   if (frontDistance < 6) {
+  //     turnLeftShort();
+  //   } else
+  //     rightPID();
+  // } else if (RightSensorState == HIGH) {
+  //   turnRightShort();
+  // }
+
+  // Serial.print(count1);
+  // Serial.print("   ");
+  // Serial.println(count2);
   // Serial.print("  A: ");  Serial.print(count1);
   // Serial.print("  B: ");  Serial.println(count2);
+
+  Serial.println(RightSensorState);
 
   delay(baseDelay);
 }
@@ -125,9 +129,58 @@ void movelitte() {
   digitalWrite(IN2, HIGH);
   digitalWrite(IN3, LOW);
   digitalWrite(IN4, HIGH);
-  analogWrite(ENA, 50*1.6);
-  analogWrite(ENB, 50);
-  delay(600);
+  analogWrite(ENA, baseSpeedA);
+  analogWrite(ENB, baseSpeedB);
+  delay(750);
+}
+
+void leftPID() {
+  float leftDistance = sonarLeft.ping_cm();
+
+  if (leftDistance == 0) leftDistance = MAX_DISTANCE;
+
+  // float error = targetDistance - leftDistance;
+  float error = targetDistance - leftDistance;
+  integral = 0.7 * integral + ki * error;
+  float derivative = error - lastError;
+  float control = kp * error + kd * derivative + integral;
+
+
+  int speedA = baseSpeedA + control;
+  int speedB = baseSpeedB - control;
+
+  speedA = constrain(speedA, 0, 255);
+  speedB = constrain(speedB, 0, 255);
+
+  analogWrite(ENA, speedA);
+  analogWrite(ENB, speedB);
+
+  lastError = error;
+}
+
+void rightPID() {
+
+  float rightDistance = sonarRight.ping_cm();
+
+  if (rightDistance == 0) rightDistance = MAX_DISTANCE;
+
+  // float error = targetDistance - leftDistance;
+  float error = targetDistance - rightDistance;
+  integral = 0.7 * integral + ki * error;
+  float derivative = error - lastError;
+  float control = kp * error + kd * derivative + integral;
+
+
+  int speedA = baseSpeedA + control;
+  int speedB = baseSpeedB - control;
+
+  speedA = constrain(speedA, 0, 255);
+  speedB = constrain(speedB, 0, 255);
+
+  analogWrite(ENA, speedA);
+  analogWrite(ENB, speedB);
+
+  lastError = error;
 }
 
 void Forward() {
@@ -144,32 +197,6 @@ void Wait(float seconds) {
   digitalWrite(IN4, LOW);
   delay(seconds * 1000);
 }
-
-void turnRightShort() {
-  Wait(0.5);
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
-  analogWrite(ENA, 70);
-  analogWrite(ENB, 70);
-  delay(330);
-  Wait(0.5);
-  movelitte();
-}
-void turnLeftShort() {
-  Wait(0.5);
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
-  analogWrite(ENA, 70);
-  analogWrite(ENB, 70);
-  delay(330);
-  Wait(0.5);
-  
-}
-
 void turnRight(float degree) {
   Wait(0.5);
   const float pi = 3.14159265;
@@ -183,16 +210,16 @@ void turnRight(float degree) {
   Serial.print("Target pulses: ");
   Serial.println(targetPulses);
 
-  while (abs(encoder1.read()) < targetPulses && abs(encoder2.read()) < targetPulses) {
-    digitalWrite(IN1, HIGH);
-    digitalWrite(IN2, LOW);
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
+  while (abs(encoder1.read()) / 1.6 < targetPulses && abs(encoder2.read()) < targetPulses) {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
 
 
     long error2 = encoder1.read() - encoder2.read();
-    int speedA = baseSpeed + kp * error2;
-    int speedB = baseSpeed - kp * error2;
+    int speedA = 75 + kp * error2;
+    int speedB = 55 - kp * error2;
 
     speedA = constrain(speedA, 0, 255);
     speedB = constrain(speedB, 0, 255);
@@ -202,7 +229,7 @@ void turnRight(float degree) {
   }
 
   Wait(0.5);
-  Stop();
+  Forward();
   Serial.println("Turn complete!");
 }
 
@@ -222,15 +249,15 @@ void turnLeft(float degree) {
   Serial.print("Target pulses: ");
   Serial.println(targetPulses);
 
-  while (abs(encoder1.read()) < targetPulses && abs(encoder2.read()) < targetPulses) {
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, HIGH);
-    digitalWrite(IN3, HIGH);
-    digitalWrite(IN4, LOW);
+  while (abs(encoder1.read()) / 1.45 < targetPulses && abs(encoder2.read()) < targetPulses) {
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
 
     long error2 = encoder1.read() - encoder2.read();
-    int speedA = baseSpeed + kp * error2;
-    int speedB = baseSpeed - kp * error2;
+    int speedA = 75 + kp * error2;
+    int speedB = 55 - kp * error2;
 
     speedA = constrain(speedA, 0, 255);
     speedB = constrain(speedB, 0, 255);
@@ -240,7 +267,7 @@ void turnLeft(float degree) {
   }
 
   Wait(0.5);
-  Stop();
+  Forward();
   Serial.println("Turn complete!");
 }
 
