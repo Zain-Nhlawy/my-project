@@ -80,9 +80,6 @@ void loop() {
   int LeftSensorState = digitalRead(LeftTrack);
   int RightSensorState = analogRead(RightTrack);
 
-
-
-
   if (LeftSensorState) {
     turnLeft(90.0);
 
@@ -93,30 +90,6 @@ void loop() {
   } else {
     turnLeft(180.0);
   }
-
-
-
-  // if (RightSensorState == HIGH) {
-  //   turnRightShort();
-  // } else if (LeftSensorState == LOW) {
-  //   if (frontDistance < 6) {
-  //     turnLeftShort();
-  //   } else
-  //     leftPID();
-  // } else if (RightSensorState == LOW) {
-  //   if (frontDistance < 6) {
-  //     turnLeftShort();
-  //   } else
-  //     rightPID();
-  // } else if (RightSensorState == HIGH) {
-  //   turnRightShort();
-  // }
-
-  // Serial.print(count1);
-  // Serial.print("   ");
-  // Serial.println(count2);
-  // Serial.print("  A: ");  Serial.print(count1);
-  // Serial.print("  B: ");  Serial.println(count2);
 
   Serial.println(RightSensorState);
 
@@ -145,7 +118,6 @@ void leftPID() {
   float derivative = error - lastError;
   float control = kp * error + kd * derivative + integral;
 
-
   int speedA = baseSpeedA + control;
   int speedB = baseSpeedB - control;
 
@@ -157,6 +129,45 @@ void leftPID() {
 
   lastError = error;
 }
+
+void moveDistance(float distanceCm) {
+
+  const float pi = 3.14159265;
+  float wheelCircumference = pi * WHEEL_DIAMETER;
+  long targetPulses = (long)((PULSES_PER_TURN * distanceCm) / wheelCircumference + 0.5);
+
+  encoder1.write(0);
+  encoder2.write(0);
+
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+
+  while (true) {
+    long pulses1 = abs(encoder1.read()) / 1.45;
+    long pulses2 = abs(encoder2.read());
+
+    if (pulses1 >= targetPulses && pulses2 >= targetPulses) break;
+
+    long error = pulses1 - pulses2;
+
+    integral = 0.7 * integral + ki * error;
+    float derivative = error - lastError;
+    float control = kp * error + kd * derivative + integral;
+    int adjA = baseSpeedA + control;
+    int adjB = baseSpeedB - control;
+
+    adjA = constrain(adjA, 0, 255);
+    adjB = constrain(adjB, 0, 255);
+
+    analogWrite(ENA, adjA);
+    analogWrite(ENB, adjB);
+  }
+  Wait(0.5);
+
+}
+
 
 void rightPID() {
 
@@ -229,7 +240,7 @@ void turnRight(float degree) {
   }
 
   Wait(0.5);
-  Forward();
+ moveDistance(18);
   Serial.println("Turn complete!");
 }
 
@@ -267,7 +278,7 @@ void turnLeft(float degree) {
   }
 
   Wait(0.5);
-  Forward();
+  moveDistance(18);
   Serial.println("Turn complete!");
 }
 
